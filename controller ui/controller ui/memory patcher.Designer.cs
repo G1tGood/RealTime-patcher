@@ -32,10 +32,13 @@ namespace controller_ui
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Patcher));
             this.controls = new System.Windows.Forms.ToolStrip();
             this.sectionsTree = new System.Windows.Forms.TreeView();
             this.HexView = new System.Windows.Forms.DataGridView();
             this.loaderCommands = new System.Windows.Forms.TextBox();
+            this.controlsRunCodeButton = new System.Windows.Forms.ToolStripButton();
+            this.controls.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.HexView)).BeginInit();
             this.SuspendLayout();
             // 
@@ -43,18 +46,20 @@ namespace controller_ui
             // 
             this.controls.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
             this.controls.ImageScalingSize = new System.Drawing.Size(20, 20);
+            this.controls.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.controlsRunCodeButton});
             this.controls.Location = new System.Drawing.Point(0, 0);
             this.controls.Name = "controls";
-            this.controls.Size = new System.Drawing.Size(1532, 25);
+            this.controls.Size = new System.Drawing.Size(1532, 27);
             this.controls.TabIndex = 0;
             this.controls.Text = "toolStrip1";
             // 
             // sectionsTree
             // 
             this.sectionsTree.Dock = System.Windows.Forms.DockStyle.Left;
-            this.sectionsTree.Location = new System.Drawing.Point(0, 25);
+            this.sectionsTree.Location = new System.Drawing.Point(0, 27);
             this.sectionsTree.Name = "sectionsTree";
-            this.sectionsTree.Size = new System.Drawing.Size(214, 661);
+            this.sectionsTree.Size = new System.Drawing.Size(214, 659);
             this.sectionsTree.TabIndex = 1;
             this.sectionsTree.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.sectionsTree_MouseDoubleClick);
             // 
@@ -88,6 +93,17 @@ namespace controller_ui
             this.loaderCommands.Size = new System.Drawing.Size(273, 661);
             this.loaderCommands.TabIndex = 2;
             // 
+            // controlsRunCodeButton
+            // 
+            this.controlsRunCodeButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.controlsRunCodeButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.controlsRunCodeButton.Image = ((System.Drawing.Image)(resources.GetObject("controlsRunCodeButton.Image")));
+            this.controlsRunCodeButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.controlsRunCodeButton.Name = "controlsRunCodeButton";
+            this.controlsRunCodeButton.Size = new System.Drawing.Size(29, 24);
+            this.controlsRunCodeButton.Text = "controlsRunCodeButton";
+            this.controlsRunCodeButton.Click += new System.EventHandler(this.controlsRunCodeButton_Click);
+            // 
             // Patcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
@@ -99,6 +115,8 @@ namespace controller_ui
             this.Controls.Add(this.controls);
             this.Name = "Patcher";
             this.Text = "memory patcher";
+            this.controls.ResumeLayout(false);
+            this.controls.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.HexView)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -113,6 +131,7 @@ namespace controller_ui
      //   private ToolStrip toolStrip2;
         private DataGridView HexView;
         private TextBox loaderCommands;
+        private ToolStripButton controlsRunCodeButton;
         // private TextBox hexDump;
     }
 }

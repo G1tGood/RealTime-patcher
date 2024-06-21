@@ -9,7 +9,7 @@ namespace controller_ui
     class UIloaderCommander: loaderCommander
     {
         private Patcher patcher;
-        UIloaderCommander(Patcher _patcher) : base(){
+        public UIloaderCommander(Patcher _patcher) : base(){
             patcher = _patcher;
         }
         public override ulong find(string regex, uint index = 0)

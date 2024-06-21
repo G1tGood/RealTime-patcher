@@ -5,6 +5,15 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
+// TODO: 
+//add space supprot in strings
+//wait command
+//find command
+//read command
+//if loops etc
+//to bytes command
+//functions? too much i think... probably goto will be enough
+
 namespace controller_ui
 {
     abstract class loaderCommander
@@ -14,64 +23,189 @@ namespace controller_ui
         {
             this.variables = new Dictionary<string, (string, object)>();
         }
-        private (bool,Int64) calc(string[] substrings)
+        
+        private bool set_variable(string[] substrings)
         {
-            Int64 sum=0;
-            string[] ops = { "+", "-", "*", "/","%"};
-            for (int i=0;i< substrings.Length; i++)
+            if (substrings[2] == "[")
             {
-                if (ops.Contains(substrings[i])) ;
-                else if (substrings[i].All(char.IsNumber)) ;
+                if (substrings[substrings.Length - 1] != "]")
+                    return false;
+
+                byte[] data = enumrateByteRange(substrings[3..(substrings.Length- 1)]);
+                if (data == null)
+                    return false;
+                variables[substrings[0]] = ("bytes", data);
+                return true;
+            }
+            (bool, Int64) calcRet= calc(substrings.Skip(2).ToArray());
+            variables[substrings[0]] = ("long",calcRet.Item2);
+            return calcRet.Item1;
+        }
+        public abstract ulong find(string regex,uint index=0);
+        protected abstract void writeMemmory(UInt64 address, byte[] data);
+        protected abstract byte[] readMemmory(UInt64 address, uint len);
+
+        private bool do_write(string[] substrings)
+        {
+            byte[] data;
+            if (substrings[1] == "[")
+            {
+                if (substrings[substrings.Length - 1] != "]")
+                    return false;
+
+                data = enumrateByteRange(substrings[2..(substrings.Length - 1)]);
+                if (data == null)
+                    return false;
+            }
+            else if (variables.ContainsKey(substrings[1]))
+            {
+                (string, object) var = variables[substrings[1]];
+                if (var.Item1 == "long")
+                {
+                    byte[] vv = BitConverter.GetBytes((Int64)var.Item2);
+                    if (!BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(vv);
+                    }
+                    data=vv;
+                }
+                else if (var.Item1 == "bytes")
+                    data=var.Item2 as byte[];
+                else
+                    return false;
+            }
+            else
+            {
+                return false;
+            }
+            UInt64 address;
+            if (variables.ContainsKey(substrings[0]))
+            {
+                (string, object) var = variables[substrings[0]];
+                if (var.Item1 == "long")
+                {
+                    address=Convert.ToUInt64(var.Item2);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                (bool,long) t= identifiyconstant(substrings[0]);
+                if (!t.Item1)
+                    return false;
+                address = (ulong)t.Item2;
+            }
+            writeMemmory(address, data);
+            return true;
+        }
+
+        private bool do_find(string[] substrings)
+        {
+            throw new NotImplementedException();
+        }
+        private bool do_wait(string[] substrings)
+        {
+            throw new NotImplementedException();
+        }
+        
+        public bool Run(string command){
+            string pattern = @"(\W)";
+            string[] holes = { "", " ", "\t", "\r", "\n" };
+            string[] substrings = Regex.Split(command, pattern).Where(item => !holes.Contains(item)).ToArray();
+            if (substrings.Length == 0)
+                return true;
+
+            switch (substrings[0])
+            {
+                case "find":
+                    return do_find(substrings[1..]);
+                case "write":
+                    return do_write(substrings[1..]);
+                case "wait":
+                    return do_wait(substrings[1..]);
+                case "print":
+                    return do_print(substrings);
+                default:
+                    if(substrings.Length>=3&&Regex.IsMatch(substrings[0], @"^[a-zA-Z0-9_]+$") && substrings[1]=="=")
+                    {
+                        return set_variable(substrings);
+                    }
+                    else
+                    {
+                        return false;
+                    }
+            }
+        }
+        private bool isSpace(string str)
+        {
+            string[] holes = { "", " ", "\t", "\r", "\n" };
+            return holes.Contains(str);
+        }
+        private bool do_print(string[] substrings)
+        {
+            if (substrings.Length >= 2)
+            {
+                if (substrings.Length == 2 && variables.ContainsKey(substrings[1]))
+                {
+                    (string, object) val = variables[substrings[1]];
+                    if (val.Item1=="bytes")
+                    {
+                        System.Windows.Forms.MessageBox.Show(BitConverter.ToString(val.Item2 as byte[]));
+                        return true;
+                    }
+                    System.Windows.Forms.MessageBox.Show(val.ToString());
+                    return true;
+                }
+                (bool, long) t = calc(substrings.Skip(1).ToArray());
+                if (!t.Item1) return false;
+                System.Windows.Forms.MessageBox.Show(t.Item2.ToString());
+                return true;
+            }
+            else
+                return false;
+        }
+        private (bool, Int64) calc(string[] substrings)
+        {
+            Int64 sum = 0;
+            string[] ops = { "+", "-", "*", "/", "%", "(", ")" };
+            for (int i = 0; i < substrings.Length; i++)
+            {
+                if (ops.Contains(substrings[i]));
+                else if (substrings[i].All(char.IsNumber));
                 else if (variables.ContainsKey(substrings[i]))
                 {
-                    (string, object) val = variables[substrings[0]];
+                    (string, object) val = variables[substrings[i]];
                     if (val.Item1 == "long")
                     {
                         substrings[i] = ((Int64)val.Item2).ToString();
-                    }else{
+                    }
+                    else
+                    {
                         return (false, 0);
                     }
                 }
                 else
                 {
-                    return (false,0);
+                    var t = identifiyconstant(substrings[i]);
+                    if(!t.Item1)
+                        return (false, 0);
+                    substrings[i] = t.Item2.ToString();
                 }
             }
-            sum= (Int64)new System.Data.DataTable().Compute(string.Join("", substrings), null);
-            return (true,sum);
-            //if (substrings[i] == "-" && substrings[1].All(char.IsNumber))
-            //{
-            //    sum = -Int64.Parse(substrings[1]);
-            //    i++;
-            //}
-            //else if (substrings[0].All(char.IsNumber))
-            //{
-            //    sum = Int64.Parse(substrings[0]);
-            //}
-            //else if (variables.ContainsKey(substrings[0]))
-            //{
-            //    (string, object) val = variables[substrings[0]];
-            //    if (val.Item1 == "long")
-            //    {
-            //        sum = (Int64)val.Item2;
-
-            //    }
-            //}
+            sum = Convert.ToInt64(new System.Data.DataTable().Compute(string.Join("", substrings), null));
+            return (true, sum);
         }
-        private bool set_variable(string[] substrings)
+        private (bool, long) identifiyconstant(string constant)
         {
-            (bool, Int64) calcRet= calc(substrings.Skip(2).ToArray());
-            variables[substrings[0]] = ("long",calcRet.Item2);
-            return calcRet.Item1;
-        }
-
-        private (bool,long) identifiyconstant(string constant){
             long res;
             try
             {
                 if (constant.StartsWith("0x"))
                 {
-                    res = Convert.ToInt64(constant.Skip(2).ToString(), 16);
+                    res = Convert.ToInt64(constant[2..], 16);
                 }
                 else
                 {
@@ -80,9 +214,9 @@ namespace controller_ui
             }
             catch
             {
-                return (false,0);
+                return (false, 0);
             }
-            return (true,res);
+            return (true, res);
         }
         private byte[] enumrateByteRange(string[] substrings)
         {
@@ -103,7 +237,7 @@ namespace controller_ui
                     (string, object) var = variables[substrings[i]];
                     if (var.Item1 == "long")
                     {
-                        byte[] vv = BitConverter.GetBytes((UInt64)var.Item2);
+                        byte[] vv = BitConverter.GetBytes((Int64)var.Item2);
                         if (!BitConverter.IsLittleEndian)
                         {
                             Array.Reverse(vv);
@@ -119,81 +253,39 @@ namespace controller_ui
                         return null;
                     }
                 }
-                else if (substrings[i] == ",");
+                else if (substrings[i] == ",") ;
                 else
                 {
-                    (bool,long) t= identifiyconstant(substrings[i]);
+                    (bool, long) t = identifiyconstant(substrings[i]);
                     if (t.Item1)
-                        data.AddRange(utils.longToBytes(t.Item2));
+                        data.Add(Convert.ToByte(t.Item2));
                     else
                         return null;
                 }
             }
             return data.ToArray();
         }
-
-        public abstract ulong find(string regex,uint index=0);
-        protected abstract void writeMemmory(UInt64 address, byte[] data);
-        protected abstract byte[] readMemmory(UInt64 address, uint len);
-        private bool do_find(string[] substrings)
-        {
-            throw new NotImplementedException();
-        }
-        private bool do_write(string[] substrings)
-        {
-            byte[] data = enumrateByteRange(substrings.Skip(1).ToArray());
-            if(data==null)
-                return false;
-            UInt64 address;
-            if (variables.ContainsKey(substrings[0]))
-            {
-                (string, object) var = variables[substrings[0]];
-                if (var.Item1 == "long")
-                {
-                    address=(UInt64)var.Item2;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                (bool,long) t= identifiyconstant(substrings[0]);
-                if (!t.Item1)
-                    return false;
-                address = (ulong)t.Item2;
-            }
-            writeMemmory(address, data);
-            return true;
-        }
-        private bool do_wait(string[] substrings)
-        {
-            throw new NotImplementedException();
-        }
-        public bool Run(string command){
-            string pattern = @"(\W)";
-            string[] holes = { "", " ", "\t", };
-            string[] substrings = Regex.Split(command, pattern).Where(item => !holes.Contains(item)).ToArray();
-
-            switch (substrings[0])
-            {
-                case "find":
-                    return do_find(substrings.Skip(1).ToArray());
-                case "write":
-                    return do_write(substrings.Skip(1).ToArray());
-                case "wait":
-                    return do_wait(substrings.Skip(1).ToArray());
-                default:
-                    if(Regex.IsMatch(substrings[0], "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890")&& substrings[1]=="=")
-                    {
-                        return set_variable(substrings);
-                    }
-                    else
-                    {
-                        return false;
-                    }
-            }
-        }
     }
 }
+
+
+
+/*
+ 
+x=5
+x=x*x
+
+y=2*x-(20+2*x)/2
+
+print y
+
+z=["this",0x20,"is",0x20,"working",0x20,]
+
+
+print z
+x=0x7FF669920040+y+1
+
+
+write x [ z, "!!!"  ]
+ 
+ */

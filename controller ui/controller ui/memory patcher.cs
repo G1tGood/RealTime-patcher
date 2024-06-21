@@ -17,6 +17,7 @@ namespace controller_ui
     {
         private System.Diagnostics.Process targetProc;
         private System.Threading.Thread updator;
+        private loaderCommander commander;
         public Patcher(int pid)
         {
             this.targetProc = System.Diagnostics.Process.GetProcessById(pid);
@@ -31,6 +32,7 @@ namespace controller_ui
             get_modules();
             this.updator = new System.Threading.Thread(new System.Threading.ThreadStart(updatorTask));
             this.updator.Start();
+            commander = new UIloaderCommander(this);
         }
         private void updatorTask()
         {
@@ -346,9 +348,9 @@ namespace controller_ui
         private void sectionsTree_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             TreeNode item = sectionsTree.SelectedNode;
-            this.selected_section = item.Tag as MyModule.MySection;
-            if (this.selected_section != null)
+            if (item != null&&item.Tag != null)
             {
+                this.selected_section = item.Tag as MyModule.MySection;
                 read_memory(Convert.ToUInt64(this.selected_section.BaseAdress, 16), this.selected_section.RegionSize);
             }
           //  this.HexView.Rows.Clear();
@@ -435,6 +437,21 @@ namespace controller_ui
 
                 byte[] bdata = Encoding.ASCII.GetBytes(data);
                 write_memory(Convert.ToUInt64(address, 16), bdata);
+            }
+        }
+
+
+        private void controlsRunCodeButton_Click(object sender, EventArgs e)
+        {
+            string[] lines = this.loaderCommands.Text.Split("\n");
+            this.commander = new UIloaderCommander(this);
+            for(int i=0;i< lines.Length; i++)
+            {
+                if (!this.commander.Run(lines[i]))
+                {
+                    MessageBox.Show("err at line:" + i.ToString());
+                    break;
+                }
             }
         }
     }
