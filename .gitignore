@@ -1,5 +1,3 @@
-/פרוייקט.code-workspace
-
 #cpp vs :
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudio,c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudio,c++
@@ -637,3 +635,4 @@ pyrightconfig.json
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python
+/output.log
