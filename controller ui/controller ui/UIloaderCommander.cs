@@ -24,7 +24,5 @@ namespace controller_ui
         {
             throw new NotImplementedException();
         }
-
-
     }
 }

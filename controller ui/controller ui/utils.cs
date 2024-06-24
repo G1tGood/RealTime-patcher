@@ -25,13 +25,6 @@ namespace controller_ui
 
             return true;
         }
-        private static void register_handler(string name, Action handler)
-        {
-            ThreadPool.RegisterWaitForSingleObject(
-          new EventWaitHandle(false, EventResetMode.AutoReset, name),
-          (state, timedOut) => { handler(); }, false, -1, false);
-
-        }
         public static byte[] longToBytes(long val)
         {
             byte[] res = BitConverter.GetBytes(val);
@@ -57,10 +50,9 @@ namespace controller_ui
             string basic = Memory_Protection_Constants[(int)(protection & 0xfffff8ff)];
 
             return basic +
-                ((protection & 0x100) == 1 ? "|PAGE_GUARD" : "") +
-                ((protection & 0x200) == 1 ? "|PAGE_NOCACHE" : "") +
-                ((protection & 0x400) == 1 ? "|PAGE_WRITECOMBINE" : "");
-            
+                ((protection & 0x100) == 1 ? "| PAGE_GUARD" : "") +
+                ((protection & 0x200) == 1 ? "| PAGE_NOCACHE" : "") +
+                ((protection & 0x400) == 1 ? "| PAGE_WRITECOMBINE" : "");
         }
         #endregion
         private static char translateByte(byte val)

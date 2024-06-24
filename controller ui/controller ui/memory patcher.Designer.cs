@@ -34,12 +34,14 @@ namespace controller_ui
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Patcher));
             this.controls = new System.Windows.Forms.ToolStrip();
+            this.controlsRunCodeButton = new System.Windows.Forms.ToolStripButton();
             this.sectionsTree = new System.Windows.Forms.TreeView();
             this.HexView = new System.Windows.Forms.DataGridView();
             this.loaderCommands = new System.Windows.Forms.TextBox();
-            this.controlsRunCodeButton = new System.Windows.Forms.ToolStripButton();
+            this.mainViewPanel = new System.Windows.Forms.Panel();
             this.controls.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.HexView)).BeginInit();
+            this.mainViewPanel.SuspendLayout();
             this.SuspendLayout();
             // 
             // controls
@@ -53,6 +55,17 @@ namespace controller_ui
             this.controls.Size = new System.Drawing.Size(1532, 27);
             this.controls.TabIndex = 0;
             this.controls.Text = "toolStrip1";
+            // 
+            // controlsRunCodeButton
+            // 
+            this.controlsRunCodeButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.controlsRunCodeButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.controlsRunCodeButton.Image = ((System.Drawing.Image)(resources.GetObject("controlsRunCodeButton.Image")));
+            this.controlsRunCodeButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.controlsRunCodeButton.Name = "controlsRunCodeButton";
+            this.controlsRunCodeButton.Size = new System.Drawing.Size(29, 24);
+            this.controlsRunCodeButton.Text = "controlsRunCodeButton";
+            this.controlsRunCodeButton.Click += new System.EventHandler(this.controlsRunCodeButton_Click);
             // 
             // sectionsTree
             // 
@@ -69,11 +82,10 @@ namespace controller_ui
             this.HexView.AllowUserToDeleteRows = false;
             this.HexView.AllowUserToResizeColumns = false;
             this.HexView.AllowUserToResizeRows = false;
-            this.HexView.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
             this.HexView.ColumnHeadersHeight = 29;
             this.HexView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            this.HexView.Location = new System.Drawing.Point(214, 25);
+            this.HexView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.HexView.Location = new System.Drawing.Point(0, 0);
             this.HexView.Name = "HexView";
             this.HexView.RowHeadersVisible = false;
             this.HexView.RowHeadersWidth = 51;
@@ -87,30 +99,29 @@ namespace controller_ui
             this.loaderCommands.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.loaderCommands.Location = new System.Drawing.Point(1259, 25);
+            this.loaderCommands.Location = new System.Drawing.Point(1259, 27);
             this.loaderCommands.Multiline = true;
             this.loaderCommands.Name = "loaderCommands";
-            this.loaderCommands.Size = new System.Drawing.Size(273, 661);
+            this.loaderCommands.Size = new System.Drawing.Size(273, 659);
             this.loaderCommands.TabIndex = 2;
             // 
-            // controlsRunCodeButton
+            // mainViewPanel
             // 
-            this.controlsRunCodeButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this.controlsRunCodeButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
-            this.controlsRunCodeButton.Image = ((System.Drawing.Image)(resources.GetObject("controlsRunCodeButton.Image")));
-            this.controlsRunCodeButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.controlsRunCodeButton.Name = "controlsRunCodeButton";
-            this.controlsRunCodeButton.Size = new System.Drawing.Size(29, 24);
-            this.controlsRunCodeButton.Text = "controlsRunCodeButton";
-            this.controlsRunCodeButton.Click += new System.EventHandler(this.controlsRunCodeButton_Click);
+            this.mainViewPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this.mainViewPanel.Controls.Add(this.HexView);
+            this.mainViewPanel.Location = new System.Drawing.Point(214, 27);
+            this.mainViewPanel.Name = "mainViewPanel";
+            this.mainViewPanel.Size = new System.Drawing.Size(1045, 659);
+            this.mainViewPanel.TabIndex = 3;
             // 
             // Patcher
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1532, 686);
+            this.Controls.Add(this.mainViewPanel);
             this.Controls.Add(this.loaderCommands);
-            this.Controls.Add(this.HexView);
             this.Controls.Add(this.sectionsTree);
             this.Controls.Add(this.controls);
             this.Name = "Patcher";
@@ -118,6 +129,7 @@ namespace controller_ui
             this.controls.ResumeLayout(false);
             this.controls.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.HexView)).EndInit();
+            this.mainViewPanel.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -132,6 +144,7 @@ namespace controller_ui
         private DataGridView HexView;
         private TextBox loaderCommands;
         private ToolStripButton controlsRunCodeButton;
+        private Panel mainViewPanel;
         // private TextBox hexDump;
     }
 }

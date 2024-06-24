@@ -110,34 +110,63 @@ namespace controller_ui
         {
             throw new NotImplementedException();
         }
-        
-        public bool Run(string command){
-            string pattern = @"(\W)";
-            string[] holes = { "", " ", "\t", "\r", "\n" };
-            string[] substrings = Regex.Split(command, pattern).Where(item => !holes.Contains(item)).ToArray();
-            if (substrings.Length == 0)
-                return true;
-
-            switch (substrings[0])
+        private string clearBlanks(string str)
+        {
+            return Regex.Replace(str, @"\s+", "");
+        }
+        public (bool,int) Run(string commands){
+            string[] lines = commands.Split("\n");
+            for (int i = 0; i < lines.Length; i++)
             {
-                case "find":
-                    return do_find(substrings[1..]);
-                case "write":
-                    return do_write(substrings[1..]);
-                case "wait":
-                    return do_wait(substrings[1..]);
-                case "print":
-                    return do_print(substrings);
-                default:
-                    if(substrings.Length>=3&&Regex.IsMatch(substrings[0], @"^[a-zA-Z0-9_]+$") && substrings[1]=="=")
-                    {
-                        return set_variable(substrings);
-                    }
-                    else
-                    {
-                        return false;
-                    }
+                string pattern = @"(\W)";
+                string[] holes = { "", " ", "\t", "\r", "\n" };
+                string[] substrings = Regex.Split(lines[i], pattern).Where(item => !holes.Contains(item)).ToArray();
+                if (substrings.Length == 0)
+                    continue;
+                switch (substrings[0])
+                {
+                    case "find":
+                        if (!do_find(substrings[1..]))
+                            return (false, i);
+                        break;
+                    case "write":
+                        if (!do_write(substrings[1..]))
+                            return (false, i);
+                        break;
+                    case "wait":
+                        if (!do_wait(substrings[1..]))
+                            return (false, i);
+                        break;
+                    case "print":
+                        if (!do_print(substrings))
+                            return (false, i);
+                        break;
+                    case "if":
+                        if(lines[i+1].Trim()!="{")
+                            return (false, i);
+                        int j = Array.FindIndex(lines,i, x => x == "}");
+                        if(j==-1)
+                            return (false, i);
+                        var t = this.Run(lines[(i+2)..j].Aggregate((current, next) => current + next));
+                        i = j + 1;
+                        if(!t.Item1)
+                            return (false, t.Item2);
+                        break;
+
+                    default:
+                        if (substrings.Length >= 3 && Regex.IsMatch(substrings[0], @"^[a-zA-Z0-9_]+$") && substrings[1] == "=")
+                        {
+                            if (!set_variable(substrings))
+                                return (false, i);
+                        }
+                        else
+                        {
+                            return (false, i);
+                        }
+                        break;
+                }
             }
+            return (true,-1);
         }
         private bool isSpace(string str)
         {

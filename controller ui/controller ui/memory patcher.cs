@@ -10,7 +10,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
 namespace controller_ui
 {
     public partial class Patcher : Form
@@ -253,7 +252,7 @@ namespace controller_ui
                             cells[i] = buffer[(ulong)j +i - 1].ToString("X");
                             dump_bytes[i - 1] = buffer[(ulong)j + i - 1];
                         }
-                        cells[17] = utils.dumpHex(dump_bytes);
+                        cells[17] = Encoding.ASCII.GetString(dump_bytes);// utils.dumpHex(dump_bytes);
                         // this.hexDump.Text += utils.dumpHex(buffer);
                         if (!isUpdate)
                         {
@@ -413,17 +412,22 @@ namespace controller_ui
             {
                 string value = this.HexView.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString();
                 string address = this.HexView.Rows[e.RowIndex].Cells[0].Value.ToString();
-                if (value.Length < 2)
+                if (value.Length==0)
                 {
-                    value = "0" + value;
+                    value = "0";
                 }
-                if (value.Length < 2)
+                byte[] data;
+                try
                 {
-                    value = "0" + value;
+                    data = new byte[1] { Convert.ToByte(value, 16) };
                 }
-                byte[] data = new byte[1] { Convert.ToByte(this.HexView.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString(), 16) };
-                write_memory(Convert.ToUInt64(address, 16), data);
-                   
+                catch
+                {
+                    MessageBox.Show("please enter date in hex format");
+                    return;
+                }
+                write_memory(Convert.ToUInt64(address, 16) + (ulong)(e.ColumnIndex - 1), data);
+
             }
             else if (e.ColumnIndex == 17)
             {
@@ -443,16 +447,11 @@ namespace controller_ui
 
         private void controlsRunCodeButton_Click(object sender, EventArgs e)
         {
-            string[] lines = this.loaderCommands.Text.Split("\n");
             this.commander = new UIloaderCommander(this);
-            for(int i=0;i< lines.Length; i++)
-            {
-                if (!this.commander.Run(lines[i]))
-                {
-                    MessageBox.Show("err at line:" + i.ToString());
-                    break;
-                }
-            }
+
+            var t = this.commander.Run(this.loaderCommands.Text);
+            if (!t.Item1)
+                MessageBox.Show("err at line" + t.Item2.ToString());
         }
     }
 

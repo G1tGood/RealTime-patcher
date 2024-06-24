@@ -18,6 +18,7 @@ namespace controller_ui
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            utils.Iintilizing_events();
 
 
 
@@ -39,7 +40,6 @@ namespace controller_ui
                 return;
             }
 
-            utils.Iintilizing_events();
 
             Application.Run(new Patcher(pid));
             //System.Diagnostics.Process.GetProcessById(pid).Kill();
