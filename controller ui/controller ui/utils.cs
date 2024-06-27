@@ -14,11 +14,12 @@ namespace controller_ui
     {
         static string dll32path = System.IO.Path.GetFullPath("..\\..\\..\\..\\..\\dll worker\\Debug\\dll worker.dll");
         static string dll64path = System.IO.Path.GetFullPath("..\\..\\..\\..\\..\\dll worker\\x64\\Debug\\dll worker.dll");
-        public static bool injecting(int pid)
+        public static bool injecting(int pid,bool IsX32=false)
         {
             [DllImport("C:\\Users\\user\\Documents\\קורסים\\יג\\א\\יסודות באבטחת תוכנה\\RealTime-patcher\\contoller util\\x64\\Release\\contoller util.dll")]
             static extern int inject(int pid, IntPtr dll_path);
-            IntPtr ptr = System.Runtime.InteropServices.Marshal.StringToHGlobalUni(dll64path);
+            
+            IntPtr ptr = System.Runtime.InteropServices.Marshal.StringToHGlobalUni(IsX32? dll32path : dll64path);
 
             if (inject(pid, ptr) == 5)
                 return false;

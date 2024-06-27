@@ -26,65 +26,27 @@ namespace controller_ui
         
         private bool set_variable(string[] substrings)
         {
-            if (substrings[2] == "[")
-            {
-                if (substrings[substrings.Length - 1] != "]")
-                    return false;
-
-                byte[] data = enumrateByteRange(substrings[3..(substrings.Length- 1)]);
-                if (data == null)
-                    return false;
-                variables[substrings[0]] = ("bytes", data);
-                return true;
-            }
-            (bool, Int64) calcRet= calc(substrings.Skip(2).ToArray());
-            variables[substrings[0]] = ("long",calcRet.Item2);
-            return calcRet.Item1;
+            int i = Array.IndexOf(substrings, "=");
+            (bool, (string, object)) t = enumrateRightSide(substrings[(i+1)..]);
+            variables[substrings[0]] = t.Item2;
+            return t.Item1;
         }
-        public abstract ulong find(string regex,uint index=0);
         protected abstract void writeMemmory(UInt64 address, byte[] data);
         protected abstract byte[] readMemmory(UInt64 address, uint len);
+        public abstract ulong find(string regex, uint index = 0);
 
         private bool do_write(string[] substrings)
         {
-            byte[] data;
-            if (substrings[1] == "[")
-            {
-                if (substrings[substrings.Length - 1] != "]")
-                    return false;
+            string[] holes = { "", " ", "\t", "\r", "\n" };
+            int i = Array.FindIndex(substrings, s => !holes.Contains(s));
 
-                data = enumrateByteRange(substrings[2..(substrings.Length - 1)]);
-                if (data == null)
-                    return false;
-            }
-            else if (variables.ContainsKey(substrings[1]))
-            {
-                (string, object) var = variables[substrings[1]];
-                if (var.Item1 == "long")
-                {
-                    byte[] vv = BitConverter.GetBytes((Int64)var.Item2);
-                    if (!BitConverter.IsLittleEndian)
-                    {
-                        Array.Reverse(vv);
-                    }
-                    data=vv;
-                }
-                else if (var.Item1 == "bytes")
-                    data=var.Item2 as byte[];
-                else
-                    return false;
-            }
-            else
-            {
-                return false;
-            }
             UInt64 address;
-            if (variables.ContainsKey(substrings[0]))
+            if (variables.ContainsKey(substrings[i]))
             {
                 (string, object) var = variables[substrings[0]];
                 if (var.Item1 == "long")
                 {
-                    address=Convert.ToUInt64(var.Item2);
+                    address = Convert.ToUInt64(var.Item2);
                 }
                 else
                 {
@@ -93,15 +55,68 @@ namespace controller_ui
             }
             else
             {
-                (bool,long) t= identifiyconstant(substrings[0]);
+                (bool, long) t = identifiyconstant(substrings[i]);
                 if (!t.Item1)
                     return false;
                 address = (ulong)t.Item2;
             }
+            var content = enumrateRightSide(substrings[(i + 1)..]);
+
+            byte[] data=null;
+            if (!content.Item1)
+                return false;
+
+            if (content.Item2.Item1 == "bytes")
+            {
+                data = content.Item2.Item2 as byte[];
+            }
+            else if (content.Item2.Item1 == "long")
+            {
+                if (content.Item2.Item1 == "long")
+                {
+                    byte[] vv = BitConverter.GetBytes((Int64)content.Item2.Item2);
+                    if (!BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(vv);
+                    }
+                    data = vv;
+                }
+                else if (content.Item2.Item1 == "bytes")
+                    data = content.Item2.Item2 as byte[];
+            }
             writeMemmory(address, data);
             return true;
         }
+        private bool do_to_bytes(string[] substrings)
+        {
+            string[] holes = { "", " ", "\t", "\r", "\n" };
+            int i = Array.FindIndex(substrings, s => !holes.Contains(s));
+            int j = Array.FindIndex(substrings,i+1, s => !holes.Contains(s));
+            
+            var tlen = identifiyconstant(substrings[j]);
+            if (!tlen.Item1)
+                return false;
 
+            var t = enumrateRightSide(substrings[(j + 1)..]);// if false, we stop anyway
+
+            if (!t.Item1)
+                return false;
+
+            if (t.Item2.Item1 == "bytes")
+            {
+                this.variables[substrings[i]] = ("bytes", (t.Item2.Item2 as byte[])[..Convert.ToInt32(tlen.Item2)]);
+            }
+            else if (t.Item2.Item1 == "long")
+            {
+                byte[] vv = BitConverter.GetBytes((Int64)t.Item2.Item2);
+                if (!BitConverter.IsLittleEndian)
+                {
+                    Array.Reverse(vv);
+                }
+                this.variables[substrings[i]] = ("bytes",vv[..Convert.ToInt32(tlen.Item2)]);
+            }
+            return true;
+        }
         private bool do_find(string[] substrings)
         {
             throw new NotImplementedException();
@@ -110,18 +125,50 @@ namespace controller_ui
         {
             throw new NotImplementedException();
         }
+
         private string clearBlanks(string str)
         {
             return Regex.Replace(str, @"\s+", "");
         }
+        private string[] clearBlanks(string[] substrings)
+        {
+            string[] holes = { "", " ", "\t", "\r", "\n" };
+            return substrings.Where(item => !holes.Contains(item)).ToArray();
+        }
+
+        private (bool,(string,object)) enumrateRightSide(string[] substrings)
+        {
+            string[] holes = { "", " ", "\t", "\r", "\n" };
+            int i = Array.FindIndex(substrings, s => !holes.Contains(s));
+            int j= Array.FindLastIndex(substrings, s => !holes.Contains(s));
+            //substrings = substrings[i..(j+1)];
+            string[] cleared = clearBlanks(substrings);
+            if (this.variables.ContainsKey(cleared[0]) && cleared.Length == 1)
+            {
+                var t = this.variables[cleared[0]];
+                return (true,t);
+            }
+            else if (cleared[0] == "[")
+            {
+                if (cleared[cleared.Length - 1] != "]")
+                    return (false,("",null));
+                byte[] data = enumrateByteRange(substrings[(i+1)..(j)]);
+                if (data == null)
+                    return (false, ("", null));
+                return (true,("bytes", data));
+            }
+            (bool, Int64) calcRet = calc(cleared); //if false,
+            return (calcRet.Item1,("long", calcRet.Item2));// we wiil stop anyway...
+        }
+
+
         public (bool,int) Run(string commands){
             string[] lines = commands.Split("\n");
             for (int i = 0; i < lines.Length; i++)
             {
-                string pattern = @"(\W)";
-                string[] holes = { "", " ", "\t", "\r", "\n" };
-                string[] substrings = Regex.Split(lines[i], pattern).Where(item => !holes.Contains(item)).ToArray();
-                if (substrings.Length == 0)
+                //string[] holes = { "", " ", "\t", "\r", "\n" };
+                string[] substrings = Regex.Split(lines[i].Trim(), @"(\W)").ToArray();//.Where(item => !holes.Contains(item)).ToArray();
+                if (clearBlanks(substrings).Length == 0)
                     continue;
                 switch (substrings[0])
                 {
@@ -138,23 +185,30 @@ namespace controller_ui
                             return (false, i);
                         break;
                     case "print":
-                        if (!do_print(substrings))
+                        if (!do_print(substrings[1..]))
                             return (false, i);
                         break;
-                    case "if":
-                        if(lines[i+1].Trim()!="{")
+                    case "bytes":
+                        if (!do_to_bytes(substrings[1..]))
                             return (false, i);
-                        int j = Array.FindIndex(lines,i, x => x == "}");
-                        if(j==-1)
-                            return (false, i);
-                        var t = this.Run(lines[(i+2)..j].Aggregate((current, next) => current + next));
-                        i = j + 1;
-                        if(!t.Item1)
-                            return (false, t.Item2);
                         break;
+                    //case "if":
+                    //    if(lines[i+1].Trim()!="{")
+                    //        return (false, i);
+                    //    int j = Array.FindIndex(lines,i, x => x == "}");
+                    //    if(j==-1)
+                    //        return (false, i);
+                    //  //  if ()
+                    //    {
+                    //        var t = this.Run(lines[(i + 2)..j].Aggregate((current, next) => current + next));
+                    //        if (!t.Item1)
+                    //            return (false, t.Item2);
+                    //    }
+                    //    i = j + 1;
+                    //    break;
 
                     default:
-                        if (substrings.Length >= 3 && Regex.IsMatch(substrings[0], @"^[a-zA-Z0-9_]+$") && substrings[1] == "=")
+                        if (clearBlanks(substrings).Length >= 3 && Regex.IsMatch(substrings[0], @"^[a-zA-Z0-9_]+$") && clearBlanks(substrings)[1] == "=")
                         {
                             if (!set_variable(substrings))
                                 return (false, i);
@@ -168,33 +222,24 @@ namespace controller_ui
             }
             return (true,-1);
         }
-        private bool isSpace(string str)
-        {
-            string[] holes = { "", " ", "\t", "\r", "\n" };
-            return holes.Contains(str);
-        }
+
+
+
         private bool do_print(string[] substrings)
         {
-            if (substrings.Length >= 2)
+            var t = enumrateRightSide(substrings);
+            if (t.Item1)
             {
-                if (substrings.Length == 2 && variables.ContainsKey(substrings[1]))
+                if (t.Item2.Item1 == "bytes")
                 {
-                    (string, object) val = variables[substrings[1]];
-                    if (val.Item1=="bytes")
-                    {
-                        System.Windows.Forms.MessageBox.Show(BitConverter.ToString(val.Item2 as byte[]));
-                        return true;
-                    }
-                    System.Windows.Forms.MessageBox.Show(val.ToString());
-                    return true;
+                    System.Windows.Forms.MessageBox.Show(BitConverter.ToString(t.Item2.Item2 as byte[]));
                 }
-                (bool, long) t = calc(substrings.Skip(1).ToArray());
-                if (!t.Item1) return false;
-                System.Windows.Forms.MessageBox.Show(t.Item2.ToString());
-                return true;
+                else
+                {
+                    System.Windows.Forms.MessageBox.Show(t.Item2.Item2.ToString());
+                }
             }
-            else
-                return false;
+            return t.Item1;
         }
         private (bool, Int64) calc(string[] substrings)
         {
@@ -282,7 +327,7 @@ namespace controller_ui
                         return null;
                     }
                 }
-                else if (substrings[i] == ",") ;
+                else if (substrings[i] == ","|| substrings[i] == " " || substrings[i] == "  " || substrings[i] == "") ;
                 else
                 {
                     (bool, long) t = identifiyconstant(substrings[i]);

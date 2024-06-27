@@ -220,11 +220,55 @@ void CALLBACK write_memory(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
     LeaveCriticalSection(&write_memmory_lock);
 }
 
+
+void CALLBACK get_address_section(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
+#ifdef _WIN64
+    MEMORY_BASIC_INFORMATION64  memInfo;//MEMORY_BASIC_INFORMATION64
+#else
+    MEMORY_BASIC_INFORMATION32  memInfo;//MEMORY_BASIC_INFORMATION64
+#endif    
+    HANDLE pipe = open_pipe(L"\\\\.\\pipe\\yesodot_memory_Dynamic_Memory_Patcher_get_address_section");
+
+    LPVOID address;
+
+    if (!ReadFile(pipe, &address, MY_MAX_PATH, NULL, NULL)) {
+        showErr(__FILENAME__, __LINE__);
+    }
+
+    if(VirtualQuery(address, (PMEMORY_BASIC_INFORMATION)&memInfo, sizeof(memInfo))) {
+        if (memInfo.State != MEM_FREE) {
+            char ret[100];
+            char path[MY_MAX_PATH];
+            HMODULE hmodule;
+            GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                (LPCSTR)address, &hmodule);
+            if (hmodule) {
+                //sprintf_s(ret, 500, "%p\n%llu\n%d\n%d\n%d\n%d\n",
+                sprintf_s(ret, 100, "%p\n%llu\n%d\n",
+                    memInfo.BaseAddress,
+                    memInfo.RegionSize,
+                    memInfo.Protect
+                    //memInfo.Type,
+                    //memInfo.State,
+                    //memInfo.AllocationProtect
+                );
+                if (!WriteFile(pipe, ret, 100, 0, NULL) || !FlushFileBuffers(pipe)) {
+                    showErr(__FILENAME__, __LINE__);
+                }
+            }
+        }
+    }
+    wait_pipe_drain(pipe);
+    CloseHandle(pipe);
+}
+
+
 void initilizeHandlers() {
     register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_get_module_sections", get_module_sections);
     register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_get_module_PE_sections", get_module_PE_sections);
     register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_read_memory", read_memory);
     register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_write_memory", write_memory);
+    register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_get_address_section", get_address_section);
 
     InitializeCriticalSection(&write_memmory_lock);
     //register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_test2", tsett);

@@ -29,7 +29,6 @@ HANDLE open_pipe(const wchar_t* name) {//             FILE_FLAG_OVERLAPPED
     WaitNamedPipeW(name, NMPWAIT_WAIT_FOREVER);
     HANDLE pipe = CreateFileW(name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (pipe == INVALID_HANDLE_VALUE) {
-        if(GetLastError()!= ERROR_BROKEN_PIPE)
             showErr(__FILENAME__,__LINE__);
     }
     return pipe;
@@ -38,7 +37,9 @@ void wait_pipe_drain(HANDLE pipe) {
     while (true) {
         DWORD avalableBytes;
         if (!PeekNamedPipe(pipe, NULL, 0, 0, 0, &avalableBytes)) {
-            showErr(__FILENAME__, __LINE__);
+            if (GetLastError() != ERROR_BROKEN_PIPE) {
+                showErr(__FILENAME__, __LINE__);
+            }
             return;
         }
         if (avalableBytes == 0) {
@@ -59,3 +60,4 @@ void  register_handler(const wchar_t* name, void(CALLBACK* handler)(PVOID, BOOLE
     }
 }
 #endif
+
