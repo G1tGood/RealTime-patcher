@@ -60,7 +60,27 @@ again:
     // send_message(mainMessager, (char*)"finished");
 }
 
+HMODULE GetModuleHandleFromAddress(LPVOID address) {
 
+    HMODULE hModules[1024];
+    HANDLE procc = GetCurrentProcess();
+    DWORD cbNeeded;
+    if (EnumProcessModules(procc, hModules, sizeof(hModules), &cbNeeded)) {
+        for (DWORD i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
+            MODULEINFO moduleInfo;
+            if (GetModuleInformation(procc, hModules[i], &moduleInfo, sizeof(moduleInfo))) {
+                if (reinterpret_cast<LPBYTE>(address) >= reinterpret_cast<LPBYTE>(moduleInfo.lpBaseOfDll) &&
+                    reinterpret_cast<LPBYTE>(address) < reinterpret_cast<LPBYTE>(moduleInfo.lpBaseOfDll) + moduleInfo.SizeOfImage) {
+                    return hModules[i];
+                }
+            }
+            else {
+                showErr(__FILENAME__, __LINE__);
+            }
+}
+    }
+    return NULL;
+}
 void CALLBACK get_module_sections(PVOID lpParameter, BOOLEAN TimerOrWaitFired){
 #ifdef _WIN64
     MEMORY_BASIC_INFORMATION64  memInfo;//MEMORY_BASIC_INFORMATION64
@@ -76,14 +96,19 @@ void CALLBACK get_module_sections(PVOID lpParameter, BOOLEAN TimerOrWaitFired){
     }
 
     while (VirtualQuery(baseAddress, (PMEMORY_BASIC_INFORMATION)&memInfo, sizeof(memInfo))) {
-        if (memInfo.State != MEM_FREE) {
+        if (memInfo.State != MEM_FREE && memInfo.State != MEM_RESERVE) {
             char ret[100];
             char path[MY_MAX_PATH];
-            HMODULE hmodule;
+            HMODULE hmodule;// = GetModuleHandleFromAddress(baseAddress);
             GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                 (LPCSTR)baseAddress, &hmodule);
-            if (hmodule) {
-                if (hmodule == GetModuleHandleW(module_name) ) {
+
+            wchar_t lpFilename[MY_MAX_PATH];
+            if (GetModuleFileNameW(hmodule, lpFilename, MY_MAX_PATH)) {
+
+                //if (hmodule == GetModuleHandleW(module_name)) {
+                if (!_wcsicmp(lpFilename, module_name)) {
+
                     //sprintf_s(ret, 500, "%p\n%llu\n%d\n%d\n%d\n%d\n",
                     sprintf_s(ret, 100, "%p\n%llu\n%d\n",
                         memInfo.BaseAddress,
@@ -97,6 +122,11 @@ void CALLBACK get_module_sections(PVOID lpParameter, BOOLEAN TimerOrWaitFired){
                         showErr(__FILENAME__, __LINE__);
                     }
                 }
+
+
+            }
+            else {
+                showErr(__FILENAME__, __LINE__);
             }
         }
         baseAddress = (LPVOID)(memInfo.BaseAddress + memInfo.RegionSize);
@@ -144,36 +174,48 @@ void CALLBACK get_module_PE_sections(PVOID lpParameter, BOOLEAN TimerOrWaitFired
 }
 
 
+CRITICAL_SECTION read_memory_lock;
 void CALLBACK read_memory(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
-    HANDLE read_memory_pipe = open_pipe(L"\\\\.\\pipe\\yesodot_memory_Dynamic_Memory_Patcher_read_memory");
-    
-    PBYTE address;
-//#ifdef _WIN64
-//    DWORD64 len;
-//#else
-    DWORD32 len;
-//#endif 
-    BYTE addressLen[sizeof(address)+sizeof(len)];
-    if (!ReadFile(read_memory_pipe, &addressLen, sizeof(address) + sizeof(len), NULL, NULL)) {
-        showErr(__FILENAME__, __LINE__);
-    }
+    EnterCriticalSection(&read_memory_lock);
+    {
+        HANDLE read_memory_pipe = open_pipe(L"\\\\.\\pipe\\yesodot_memory_Dynamic_Memory_Patcher_read_memory");
 
-    //memcpy(&address, addressLen, sizeof(address));
-    address = *((PBYTE*)addressLen);
-    //memcpy(&len, addressLen + sizeof(address), sizeof(len));
-    len = *((decltype(len)*)(addressLen + sizeof(address)));
-    //BYTE buff[16];
-    //for (ULONG i = 0; i < len; i+=16) {
-    //    for (ULONG j = 0; j < 4; j++) {
-    //        ((int*)buff)[i] = *(address + (i + (4 * j) ));
-    //    }
-        if (!WriteFile(read_memory_pipe, address,len, NULL, NULL)) {
-       //if (!WriteFile(read_memory_pipe, buff,16, NULL, NULL)) {
+        PBYTE address;
+        //#ifdef _WIN64
+        //    DWORD64 len;
+        //#else
+        DWORD64 len;
+        //#endif 
+        BYTE addressLen[sizeof(address) + sizeof(len)];
+        if (!ReadFile(read_memory_pipe, &addressLen, sizeof(address) + sizeof(len), NULL, NULL)) {
             showErr(__FILENAME__, __LINE__);
         }
-    //}
-    wait_pipe_drain(read_memory_pipe);
-    CloseHandle(read_memory_pipe);
+
+        //memcpy(&address, addressLen, sizeof(address));
+        address = *((PBYTE*)addressLen);
+        //memcpy(&len, addressLen + sizeof(address), sizeof(len));
+        len = *((decltype(len)*)(addressLen + sizeof(address)));
+        //BYTE buff[16];
+        //for (ULONG i = 0; i < len; i+=16) {
+        //    for (ULONG j = 0; j < 4; j++) {
+        //        ((int*)buff)[i] = *(address + (i + (4 * j) ));
+        //    }
+        DWORD dwOld = NULL;
+        if (VirtualProtect(address, len, PAGE_EXECUTE_READWRITE, &dwOld)) {
+            if (!WriteFile(read_memory_pipe, address, len, NULL, NULL)) {
+                //if (!WriteFile(read_memory_pipe, buff,16, NULL, NULL)) {
+                showErr(__FILENAME__, __LINE__);
+            }
+            //*address = addressLen[sizeof(address)];
+            VirtualProtect(address, len, dwOld, NULL);
+        }
+
+
+        //}
+        wait_pipe_drain(read_memory_pipe);
+        CloseHandle(read_memory_pipe);
+    }
+    LeaveCriticalSection(&read_memory_lock);
 }
 
 
@@ -242,7 +284,7 @@ void CALLBACK get_address_section(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
             HMODULE hmodule;
             GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                 (LPCSTR)address, &hmodule);
-            if (hmodule) {
+            //if (hmodule) {
                 //sprintf_s(ret, 500, "%p\n%llu\n%d\n%d\n%d\n%d\n",
                 sprintf_s(ret, 100, "%p\n%llu\n%d\n",
                     memInfo.BaseAddress,
@@ -255,7 +297,7 @@ void CALLBACK get_address_section(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
                 if (!WriteFile(pipe, ret, 100, 0, NULL) || !FlushFileBuffers(pipe)) {
                     showErr(__FILENAME__, __LINE__);
                 }
-            }
+            //}
         }
     }
     wait_pipe_drain(pipe);
@@ -271,6 +313,7 @@ void initilizeHandlers() {
     register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_get_address_section", get_address_section);
 
     InitializeCriticalSection(&write_memmory_lock);
+    InitializeCriticalSection(&read_memory_lock);
     //register_handler(L"Global\\yesodot_memory_Dynamic_Memory_Patcher_test2", tsett);
     //HANDLE hEvent = OpenEventW(EVENT_ALL_ACCESS, 0, L"Global\\yesodot_memory_Dynamic_Memory_Patcher_test");
     //if (hEvent == NULL) {
@@ -280,8 +323,10 @@ void initilizeHandlers() {
     //    showErr(__FILENAME__, __LINE__);
     //}
     //CloseHandle(hEvent);
+
 }
 void clearHandlers() {
     DeleteCriticalSection(&write_memmory_lock);
+    DeleteCriticalSection(&read_memory_lock);
     //TODO: take care of the events
 }

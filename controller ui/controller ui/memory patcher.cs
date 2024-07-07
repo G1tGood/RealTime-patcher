@@ -129,7 +129,7 @@ namespace controller_ui
         #endregion
 
         private static readonly object _load_section_memory_lock = new object();
-        private void load_section_memory(ulong address, uint len, bool isUpdate = false)
+        private void load_section_memory(ulong address, ulong len, bool isUpdate = false)
         {
             lock (_load_section_memory_lock)
             {
@@ -145,7 +145,7 @@ namespace controller_ui
 
                 // DataGridViewRowCollection rows = new DataGridViewRowCollection(this.HexView);
                 // while (true)
-                for (int j = 0; j < len; j += 16)
+                for (ulong j = 0; j < len; j += 16)
                 {
 
                     // byte[] buffer = new byte[len];
@@ -156,7 +156,7 @@ namespace controller_ui
                     //server.Read(buffer);
 
                     object[] cells = new object[18];
-                    cells[0] = (address + (ulong)j).ToString("X");
+                    cells[0] = (address + (ulong)j).ToString("X16");
                     byte[] dump_bytes = new byte[16];
                     for (ulong i = 1; i <= 16; i++)
                     {
@@ -171,9 +171,9 @@ namespace controller_ui
                     }
                     else
                     {
-                        if (!Enumerable.SequenceEqual(this.dataTable.Rows[j / 16].ItemArray, cells))
+                        if (!Enumerable.SequenceEqual(this.dataTable.Rows[Convert.ToInt32(j / 16)].ItemArray, cells))
                         {
-                            this.dataTable.Rows[j / 16].ItemArray = cells;
+                            this.dataTable.Rows[Convert.ToInt32(j / 16)].ItemArray = cells;
                         }
 
                     }
@@ -182,7 +182,7 @@ namespace controller_ui
             }
         }
         
-        public byte[] read_memory(ulong address, uint len)
+        public byte[] read_memory(ulong address, ulong len)
         {
             return this.worker_controller.read_memory(address,len);
         }

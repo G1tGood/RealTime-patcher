@@ -20,7 +20,7 @@ namespace controller_ui
         }
         public class MySection
         {
-            public MySection(string _baseAdress, uint _RegionSize,int _Protect,string _name= "unnamed")
+            public MySection(string _baseAdress, ulong _RegionSize,int _Protect,string _name= "unnamed")
             {
                 this.baseAdress = _baseAdress;
                 this.regionSize = _RegionSize;
@@ -50,8 +50,8 @@ namespace controller_ui
                     this.baseAdress = value;
                 }
             }
-            private uint regionSize;
-            public uint RegionSize
+            private ulong regionSize;
+            public ulong RegionSize
             {
                 get
                 {

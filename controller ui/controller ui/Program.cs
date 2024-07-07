@@ -27,7 +27,7 @@ namespace controller_ui
            
             foreach (System.Diagnostics.Process proc in System.Diagnostics.Process.GetProcesses())
             {
-                if (proc.ProcessName.ToLower().StartsWith("dummy"))
+                if (proc.ProcessName.ToLower().StartsWith("trying"))
                 {
                     pid = proc.Id;
                     utils.injecting(proc.Id);

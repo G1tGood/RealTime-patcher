@@ -129,6 +129,8 @@ namespace controller_ui
             this.HexView.Size = new System.Drawing.Size(1045, 659);
             this.HexView.TabIndex = 5;
             this.HexView.CellMouseClick += HexView_MouseClick;
+            this.HexView.CellEndEdit += HexView_CellEndEdit;
+            this.HexView.DataError += null;
             // 
             // showDissasemblerButton
             // 

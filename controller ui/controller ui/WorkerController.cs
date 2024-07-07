@@ -22,7 +22,7 @@ namespace controller_ui
         }
 
         private readonly object _read_memory_lock = new object();
-        public byte[] read_memory(ulong address, uint len)
+        public byte[] read_memory(ulong address, ulong len)
         {
             lock (_read_memory_lock)
             {
@@ -123,7 +123,7 @@ namespace controller_ui
 
                         rett.Add(new MyModule.MySection(
                             sliced[0],
-                            Convert.ToUInt32(sliced[1]),
+                            Convert.ToUInt64(sliced[1]),
                             Convert.ToInt32(sliced[2]))
                         );
                     }
