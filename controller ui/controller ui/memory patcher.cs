@@ -419,8 +419,7 @@ namespace controller_ui
                             }
                         };
                     }
-                    else
-                    {
+                    else {
                         brpt.Text = "remove break point";
                         brpt.Click += (s, e) => {
                             int line = this.disassemblyText.SelectionStart;
@@ -432,6 +431,55 @@ namespace controller_ui
                     }
                     this.temporaryContextMenuStrip.Items.Add(startItem);
                     this.temporaryContextMenuStrip.Items.Add(brpt);
+
+                    Point position = this.HexView.PointToClient(Cursor.Position);
+                    this.temporaryContextMenuStrip.Show(this.HexView, position);
+                }
+                else if (e.RowIndex == -1 && e.ColumnIndex == 0)
+                {
+                    this.temporaryContextMenuStrip.Items.Clear();
+                    ToolStripTextBox gotoAddressItem = new ToolStripTextBox();
+                    //gotoAddressItem.Text = "goto address:";
+                    gotoAddressItem.TextChanged += (sender, _e) => {
+                        string saddr = (sender as ToolStripTextBox).Text;
+                        try
+                        {
+                            ulong addr = Convert.ToUInt64(saddr, 16);
+                            foreach(TreeNode mnode in this.sectionsTree.Nodes)
+                            {
+                                foreach (TreeNode snode in mnode.Nodes)
+                                {
+                                    MyModule.MySection sect = (snode.Tag as MyModule.MySection);
+                                    ulong badddr = Convert.ToUInt64(sect.BaseAdress, 16);
+                                    if (addr >= badddr && addr <= badddr + sect.RegionSize)
+                                    {
+                                        this.selected_section = sect;
+                                        if (this.selected_section != null)
+                                        {
+                                            load_section_memory(Convert.ToUInt64(this.selected_section.BaseAdress, 16), this.selected_section.RegionSize);
+                                            foreach (DataGridViewRow row in this.HexView.Rows)
+                                            {
+                                               if(Convert.ToUInt64(row.Cells[0].Value as string,16) == addr)
+                                                {
+                                                    this.HexView.FirstDisplayedScrollingRowIndex = row.Index;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        return;
+                                    }
+                                }
+                            }
+                            MessageBox.Show("address not in program's regions");
+                        }
+                        catch
+                        {
+                            MessageBox.Show("please enter data in hex format");
+                            return;
+                        }
+                    };
+
+                    this.temporaryContextMenuStrip.Items.Add(gotoAddressItem);
 
                     Point position = this.HexView.PointToClient(Cursor.Position);
                     this.temporaryContextMenuStrip.Show(this.HexView, position);

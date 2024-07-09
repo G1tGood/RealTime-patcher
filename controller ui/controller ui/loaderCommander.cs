@@ -18,6 +18,7 @@ namespace controller_ui
 {
     abstract class loaderCommander
     {
+        private string[] savedKeywords={"to" };
         private Dictionary<string, (string, object)> variables;
         public loaderCommander()
         {
@@ -28,6 +29,9 @@ namespace controller_ui
         {
             int i = Array.IndexOf(substrings, "=");
             (bool, (string, object)) t = enumrateRightSide(substrings[(i+1)..]);
+            if(savedKeywords.Contains(substrings[0])){
+                return false;
+            }
             variables[substrings[0]] = t.Item2;
             return t.Item1;
         }
@@ -222,9 +226,6 @@ namespace controller_ui
             }
             return (true,-1);
         }
-
-
-
         private bool do_print(string[] substrings)
         {
             var t = enumrateRightSide(substrings);
@@ -332,7 +333,9 @@ namespace controller_ui
                 {
                     (bool, long) t = identifiyconstant(substrings[i]);
                     if (t.Item1)
+                    {
                         data.Add(Convert.ToByte(t.Item2));
+                    }
                     else
                         return null;
                 }
