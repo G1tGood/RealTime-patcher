@@ -25,6 +25,7 @@ namespace controller_ui
             this.targetProc = System.Diagnostics.Process.GetProcessById(pid);
 
             InitializeComponent();
+            //this.loaderCommands.BringToFront();
             this.breakPoints = new List<string>();
             inint_data_table();
 
@@ -226,12 +227,12 @@ namespace controller_ui
                 if (i == "address")
                 {
                     this.HexView.Columns[i].ReadOnly = true;
-                    this.HexView.Columns["address"].Width = 111;
+                    this.HexView.Columns["address"].Width = 160;
                 }
                 else if (i == "dump")
                 {
                     this.HexView.Columns[i].ReadOnly = true;
-                    this.HexView.Columns["dump"].Width = 420;
+                    this.HexView.Columns["dump"].Width = 371;
                     (this.HexView.Columns[i] as DataGridViewTextBoxColumn).MaxInputLength = 16;
                 }
                 else 
@@ -395,7 +396,7 @@ namespace controller_ui
         {
             if (e.Button == MouseButtons.Right)
             {
-                if(e.RowIndex != -1 && e.ColumnIndex != -1)
+                if(e.RowIndex != -1 && e.ColumnIndex > 0)
                 {
                     string address = (Convert.ToUInt64((string)this.HexView.Rows[e.RowIndex].Cells[0].Value, 16) +
                             Convert.ToUInt64(e.ColumnIndex - 1)).ToString("X");

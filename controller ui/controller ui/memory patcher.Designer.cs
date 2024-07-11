@@ -32,6 +32,8 @@ namespace controller_ui
         /// </summary>
         private void InitializeComponent()
         {
+            this.AutoScaleDimensions = new System.Drawing.SizeF(120, 120);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Patcher));
             this.controls = new System.Windows.Forms.ToolStrip();
@@ -187,9 +189,7 @@ namespace controller_ui
             // 
             // loaderCommands
             // 
-            this.loaderCommands.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.loaderCommands.Dock = DockStyle.Right;
             this.loaderCommands.Location = new System.Drawing.Point(1259, 27);
             this.loaderCommands.Multiline = true;
             this.loaderCommands.Name = "loaderCommands";
@@ -199,13 +199,12 @@ namespace controller_ui
             // 
             // mainViewPanel
             // 
-            this.mainViewPanel.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left)));
+            this.mainViewPanel.Dock = DockStyle.Top;
             this.mainViewPanel.Controls.Add(this.HexViewPanel);
             this.mainViewPanel.Controls.Add(this.disassemblerPanel);
             this.mainViewPanel.Location = new System.Drawing.Point(214, 27);
             this.mainViewPanel.Name = "mainViewPanel";
-            this.mainViewPanel.Size = new System.Drawing.Size(1045, 659);
+            this.mainViewPanel.Size = new System.Drawing.Size(900, 659);
             this.mainViewPanel.TabIndex = 3;
             // 
             // sectionsTreeChooseIfAssemblyStart
@@ -265,6 +264,7 @@ namespace controller_ui
         private ContextMenuStrip sectionsTreeChooseIfAssemblyStart;
         private ContextMenuStrip temporaryContextMenuStrip;
         private ContextMenuStrip disassemblyTextContextMenuStrip;
+
         // private TextBox hexDump;
     }
 }
