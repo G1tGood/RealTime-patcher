@@ -12,17 +12,17 @@ namespace controller_ui
         public UIloaderCommander(Patcher _patcher) : base(){
             patcher = _patcher;
         }
-        public override ulong find(string regex, uint index = 0)
+        public override ulong find(Byte[] what, ulong startAdress = 0)
         {
             throw new NotImplementedException();
         }
-        protected override void writeMemmory(UInt64 address, byte[] data)
+        protected override void writeMemory(UInt64 address, byte[] data)
         {
             this.patcher.write_memory(address, data);
         }
-        protected override byte[] readMemmory(UInt64 address, uint len)
+        protected override byte[] readMemory(UInt64 address, uint len)
         {
-            throw new NotImplementedException();
+            return patcher.read_memory(address, len);
         }
     }
 }

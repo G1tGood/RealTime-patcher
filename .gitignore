@@ -636,3 +636,11 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python
 /output.log
+/contoller util/contoller util/contoller util.vcxproj
+/controller ui/controller ui/controller ui.csproj
+/controller ui/controller ui/memory patcher.cs
+/controller ui/controller ui/Program.cs
+/controller ui/controller ui/utils.cs
+/contoller util/contoller util/contoller util.vcxproj
+/dll worker/dll worker/dll worker.vcxproj
+/controller ui/backup 11.7.24.zip
