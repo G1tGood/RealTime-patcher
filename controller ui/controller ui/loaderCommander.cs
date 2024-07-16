@@ -8,6 +8,8 @@ using System.Linq.Expressions;
 using System.Security.Cryptography;
 using System.Windows.Forms;
 using System.CodeDom.Compiler;
+using System.Runtime.InteropServices;
+using System.Reflection;
 
 // TODO: 
 //add space supprot in strings
@@ -93,23 +95,57 @@ namespace controller_ui
 
         public int currentLine()
         {
+            if (finishedParse())
+                return tokens.Last().Item2;
             return this.tokens[index].Item2;
         }
     }
 
     abstract class loaderCommander
     {
+        // tokenizer
         Tokenizer tokenizer;
+        // defined variable. map: name => (type, value).
         private Dictionary<string, (string, object)> variables;
-        private string[] functionNames = { "find", "write", "wait", "print", "bytes", "checksum" };
+        private string[] functionNames = {"find", "write", "print", "checksum", "bytes", "wait"};
+        /*// defined functions. map: name => function.
+        private Dictionary<string, MethodInfo> functions;*/
 
         public loaderCommander()
         {
             this.variables = new Dictionary<string, (string, object)>();
+            /*this.functions = new Dictionary<string, MethodInfo>();
+
+            registerFunction("find", GetType().GetMethod("Find", BindingFlags.NonPublic | BindingFlags.Instance));
+            registerFunction("write", GetType().GetMethod("Write", BindingFlags.NonPublic | BindingFlags.Instance));
+            registerFunction("print", GetType().GetMethod("Print", BindingFlags.NonPublic | BindingFlags.Instance));
+            registerFunction("checksum", GetType().GetMethod("Checksum", BindingFlags.NonPublic | BindingFlags.Instance));
+            registerFunction("bytes", GetType().GetMethod("Bytes", BindingFlags.NonPublic | BindingFlags.Instance));
+            registerFunction("wait", GetType().GetMethod("Wait", BindingFlags.NonPublic | BindingFlags.Instance));*/
         }
+/*
+        private void registerFunction(string name, MethodInfo func)
+        {
+            if (functions.ContainsKey(name))
+                throw error("can't create function {0} - function named {0} already exists.",
+                    name);
+            functions.Add(name, func);
+        }
+
+        private (string, object) doFunction(string name, params object[] args)
+        {
+            if (!functions.ContainsKey(name))
+                throw error("can't run function '{0}' - function '{0}' doesn't exist.",
+                    name);
+            functions[name].Invoke(this, args);
+        }*/
 
         public void Run(string script)
         {
+            // if script is empty, return
+            if (script.Trim() == "")
+                return;
+
             this.tokenizer = new Tokenizer(script);
 
             while (!tokenizer.finishedParse())
@@ -121,12 +157,139 @@ namespace controller_ui
         private void parseCommand()
         {
             string name = tokenizer.currentToken();
-            if (this.functionNames.Contains(name)) {
+            if (this.functionNames.Contains(name))
+            {
                 parseFunctionCall();
             }
-            else {
+            else if (this.tokenizer.currentToken() == "if")
+            {
+                parseIf();
+            }
+            else if (this.tokenizer.currentToken() == "while")
+            {
+                parseWhile();
+            }
+            else
+            {
                 parseAssignment();
             }
+        }
+
+        private void parseWhile()
+        {
+            proccess("while");
+            long cond = 1;
+            var condIndex = this.tokenizer.index;
+
+            while (cond != 0)
+            {
+                cond = toLong(this.parseExpression());
+                proccess(":");
+                // ignore the commands
+                proccess("{");
+                if (cond == 0)
+                {
+                    int barCount = 1;
+                    while (barCount > 0)
+                    {
+                        if (tokenizer.currentToken() == "{")
+                            barCount++;
+                        else if (tokenizer.currentToken() == "}")
+                            barCount--;
+                        tokenizer.advanceTokenizer();
+                    }
+                    break;
+                }
+                else
+                {
+                    while (this.tokenizer.currentToken() != "}")
+                        parseCommand();
+                    this.tokenizer.index = condIndex;
+                }
+            }
+        }
+
+        private void parseIf()
+        {
+            proccess("if");
+            long cond = toLong(this.parseExpression());
+            proccess(":");
+            // ignore the commands
+            proccess("{");
+            if (cond == 0)
+            {
+                int barCount = 1;
+                while (barCount > 0)
+                {
+                    if (tokenizer.currentToken() == "{")
+                        barCount++;
+                    else if (tokenizer.currentToken() == "}")
+                        barCount--;
+                    tokenizer.advanceTokenizer();
+                }
+            }
+            else
+            {
+                while (this.tokenizer.currentToken() != "}")
+                    parseCommand();
+                proccess("}");
+            }
+
+            // else if parse statement doesnt exist
+            if (tokenizer.currentToken() != "else")
+                return;
+
+            /// parse else
+            // skip the else statements
+            if (cond != 0)
+            {
+                // can be a lot of else ifs
+                while (this.tokenizer.currentToken() == "else")
+                {
+                    // advance to the start of the statements
+                    while (this.tokenizer.currentToken() != "{")
+                        this.tokenizer.advanceTokenizer();
+                    proccess("{");
+                    int barCount = 1;
+                    // we know the else was finished when there are the same amount
+                    // of brackets on both sides
+                    while (barCount > 0)
+                    {
+                        if (tokenizer.currentToken() == "{")
+                            barCount++;
+                        else if (tokenizer.currentToken() == "}")
+                            barCount--;
+                        tokenizer.advanceTokenizer();
+                    }
+                }
+            }
+            // parse the else
+            else
+            {
+                proccess("else");
+                // else if
+                if (this.tokenizer.currentToken() == "if")
+                {
+                    parseIf();
+                    return;
+                }
+
+                // final else
+                proccess(":");
+                proccess("{");
+                while (this.tokenizer.currentToken() != "}")
+                    parseCommand();
+                proccess("}");
+            }
+        }
+
+        private long toLong((string, object) value)
+        {
+            if (value.Item1 == null)
+                throw error("expected a number, got void");
+            if (value.Item1 != "long")
+                throw error("expected a number, got {0}", value.Item1);
+            return (long)value.Item2;
         }
 
         private (string, object) parseFunctionCall()
@@ -142,52 +305,52 @@ namespace controller_ui
                     if (this.tokenizer.currentToken() == ",")
                     {
                         proccess(",");
-                        address = (UInt64) parseLong();
+                        address = (UInt64)parseLong();
                         gotAddress = true;
                     }
                     proccess(")");
-                    return ("long", gotAddress? find(what, address) : find(what));
+                    return ("long", gotAddress ? findCommand(what, address) : findCommand(what));
                 case "write":
                     proccess("write");
                     proccess("(");
                     what = toBytes(parseExpression());
                     proccess(",");
-                    address = (UInt64) parseLong();
+                    address = (UInt64)parseLong();
                     proccess(")");
                     writeMemory(address, what);
-                    return (null, null);
+                    return ("void", null);
                 case "print":
                     proccess("print");
                     proccess("(");
                     (string, object) printwhat = parseExpression();
                     proccess(")");
-                    do_print(printwhat);
-                    return (null, null);
+                    printCommand(printwhat);
+                    return ("void", null);
                 case "checksum":
                     proccess("checksum");
                     proccess("(");
                     what = toBytes(parseExpression());
                     proccess(")");
-                    return ("long", computeChecksum(what));
+                    return ("long", checksumCommand(what));
                 case "bytes":
                     proccess("bytes");
                     proccess("(");
-                    int len = (int) parseLong();
+                    long len = toLong(parseExpression());
                     proccess(",");
-                    long number = parseLong();
+                    long number = toLong(parseExpression());
                     proccess(")");
-                    return ("bytes", commandBytes(len, number));
+                    return ("bytes", bytesCommand(len, number));
                 case "wait":
                     proccess("wait");
                     proccess("until");
-                    commandWait();
-                    return (null, null);
+                    waitCommand();
+                    return ("void", null);
                 default:
                     throw error("'{0}' - no such command", tokenizer.currentToken());
             }
         }
 
-        private void commandWait()
+        private void waitCommand()
         {
             int startIndex = this.tokenizer.index;
             (string, object) exp;
@@ -198,25 +361,26 @@ namespace controller_ui
                 exp = parseExpression();
                 try // try casting to long (also boolean)
                 {
-                    res = (long) exp.Item2;
+                    res = (long)exp.Item2;
                 }
                 catch (Exception)
                 {
-                    throw error("expression of do wait must be of boolean (long) type, type {0} received",  exp.Item1);
+                    throw error("expression of do wait must be of boolean (long) type, type {0} received", exp.Item1);
                 }
             }
             while (res != 0);
         }
 
-        private long computeChecksum(Byte[] bytes)
+        private long checksumCommand(Byte[] bytes)
         {
             IxxHash xxHash = xxHashFactory.Instance.Create(new xxHashConfig { HashSizeInBits = 64 });
             return BitConverter.ToInt64(xxHash.ComputeHash(bytes).Hash);
         }
 
-        private Exception error(String messageFormat, params object[] parameters) {
+        private Exception error(String messageFormat, params object[] parameters)
+        {
             throw new Exception(
-                String.Format("syntax error in {0}: ", this.tokenizer.currentLine()) + 
+                String.Format("syntax error in line {0}: ", this.tokenizer.currentLine()) +
                 String.Format(messageFormat, parameters)
                 );
         }
@@ -226,20 +390,20 @@ namespace controller_ui
             throw new Exception(message);
         }
 
-        private Byte[] commandBytes(int len, long number)
+        private Byte[] bytesCommand(long len, long number)
         {
-            return toBytes(("long", number)).Take(len).ToArray();
+            return toBytes(("long", number)).Take((int) len).ToArray();
         }
 
         private Byte[] toBytes((string, object) value)
         {
-            if (value.Item1 == null)
+            if (value.Item1 == "void")
             {
                 return null;
             }
             if (value.Item1 == "bytes")
             {
-                return (Byte[]) value.Item2;
+                return (Byte[])value.Item2;
             }
             if (value.Item1 == "long")
             {
@@ -270,7 +434,7 @@ namespace controller_ui
             }
             catch
             {
-                throw error("excpected a number got '{0}'.", 
+                throw error("excpected a number got '{0}'.",
                     number);
             }
             this.tokenizer.advanceTokenizer();
@@ -280,37 +444,99 @@ namespace controller_ui
         private (string, object) parseExpression()
         {
             List<string> expressions = new List<string>();
-            string[] ops = { "+", "-", "*", "/", "=" };
+            string[] ops = { "+", "-", "*", "/", "=", "<", ">" };
             (string, object) temp1, temp2;
             string op;
             temp1 = parseTerm();
-            if (ops.Contains(this.tokenizer.currentToken()))
-            {
-                if (temp1.Item1 == null)
-                    throw error("can't do operation '{0}' with void value",
-                        this.tokenizer.currentToken());
-                else if (temp1.Item1 != "long")
-                    throw error("can't do operation '{0}' with {1} value {2}",
-                        this.tokenizer.currentToken(), temp1.Item1, temp1.Item2);
-                expressions.Add(((long) temp1.Item2).ToString());
-            }
-            else
+            string type = temp1.Item1;
+            List<Byte> bytesRes = new List<byte>();    // result if the operation is on bytes
+
+            // no operation
+            if (!ops.Contains(this.tokenizer.currentToken()))
                 return temp1;
+            
+            if (type == "long") expressions.Add(((long)temp1.Item2).ToString());
+            if (type == "bytes") bytesRes.AddRange((Byte[]) temp1.Item2);
+
             while (ops.Contains(this.tokenizer.currentToken()))
             {
                 op = this.tokenizer.currentToken();
                 proccess(op);
-                expressions.Add(op);
+                if (type == "long")
+                    expressions.Add(op);
                 temp2 = parseTerm();
-                if (temp2.Item1 == null)
-                    throw error("can't do operation '{0}' with void value", op);
-                else if (temp2.Item1 == "long")
-                    expressions.Add(temp2.Item2.ToString());
-                else
-                    throw error("can't do operation '{0}' with bytes value", op);
+
+                string rType = temp2.Item1;
+                switch (type)
+                {
+                    case "long":
+                        if (rType == "long")
+                            expressions.Add(temp2.Item2.ToString());
+                        else
+                            throw error("operation 'long' {0} '{1}' is undefined",
+                                op,
+                                this.tokenizer.currentToken());
+                        break;
+                    case "bytes":
+                        temp2 = computeBytesOp(bytesRes, op, temp2);
+                        type = temp2.Item1;
+                        if (type == "long")
+                            expressions.Add(temp2.Item2.ToString());
+                        else if (type == "bytes")
+                            bytesRes = new List<Byte>((Byte[]) temp2.Item2);
+                        break;
+                    case "void":
+                        throw error("can't do operation '{0}' with void type",
+                            this.tokenizer.currentToken());;
+                    default:
+                        throw error("can't do operation '{0}' with error type",
+                            this.tokenizer.currentToken());
+                }
             }
-            long sum = Convert.ToInt64(new System.Data.DataTable().Compute(string.Join("", expressions), null));
-            return ("long", sum);
+
+            // return result
+            if (type == "long") {
+                long sum = Convert.ToInt64(new System.Data.DataTable().Compute(string.Join("", expressions), null));
+                return ("long", sum);
+            }
+            if (type == "bytes")
+            {
+                return ("bytes", bytesRes.ToArray());
+            }
+            throw error("can't return error type");
+        }
+
+        private (string, object) computeBytesOp(List<Byte> bytesRes, string op, (string, object) temp2)
+        {
+            string rtype = temp2.Item1;
+            object rvalue = temp2.Item2;
+            switch (rtype)
+            {
+                case "long":
+                    if (op == "*")
+                    {
+                        List<Byte> res = new List<Byte>();
+                        for (long i = 0; i < (long) rvalue; i++)
+                            res.AddRange(bytesRes);
+                        return ("bytes", res.ToArray());
+                    }
+                    else throw error("operation 'bytes' {0} '{1}' is undefined",
+                                op,
+                                rtype);
+                case "bytes":
+                    if (op == "+")
+                    {
+                        bytesRes.AddRange((Byte[])rvalue);
+                        return ("bytes", bytesRes.ToArray());
+                    }
+                    else if (op == "=")
+                        return ("long", bytesRes.SequenceEqual((Byte[])rvalue));
+                    else throw error("operation 'bytes' {0} '{1}' is undefined",
+                                op,
+                                rtype);
+                default:
+                    throw error("operation 'bytes' {0} 'error type' is undefined", op);
+            }
         }
 
         private (string, object) parseTerm()
@@ -418,10 +644,10 @@ namespace controller_ui
                     }
                     break;
                 case "long":
-                    long num = (long) value.Item2;
+                    long num = (long)value.Item2;
                     if (num < 0 || num > 255)
                         throw error("bytes object can't accept values not in byte range (0-255): got {0}", num);
-                    bytes.Add((byte) num);
+                    bytes.Add((byte)num);
                     break;
                 case null:
                     throw error("can't convert 'void' value to bytes");
@@ -481,18 +707,22 @@ namespace controller_ui
 
         private void proccess(string token)
         {
+            if ( tokenizer.finishedParse() )
+            {
+                throw error("excpected '{0}' got end of script.", token);
+            }
             if (this.tokenizer.currentToken() != token)
             {
-                throw error("excpected '{1}' got '{2}'.", token, this.tokenizer.currentToken());
+                throw error("excpected '{0}' got '{1}'.", token, this.tokenizer.currentToken());
             }
             this.tokenizer.advanceTokenizer();
         }
 
         protected abstract void writeMemory(UInt64 address, byte[] data);
         protected abstract byte[] readMemory(UInt64 address, uint len);
-        public abstract ulong find(Byte[] what, ulong startAdress = 0);
+        public abstract ulong findCommand(Byte[] what, ulong startAdress = 0);
 
-        private void do_print((string, object) what)
+        private void printCommand((string, object) what)
         {
             string type = what.Item1;
             object value = what.Item2;
@@ -503,11 +733,11 @@ namespace controller_ui
             }
             else if (type == "long")
             {
-                msg = "long: " + ((long) value).ToString();
+                msg = "long: " + ((long)value).ToString();
             }
             else if (type == "bytes")
             {
-                msg = "bytes/string: " + BitConverter.ToString((Byte[]) value);
+                msg = "bytes/string: " + BitConverter.ToString((Byte[])value);
             }
             var response = MessageBox.Show(msg + "\r\n\r\ncopy to clipboard?", "script output", MessageBoxButtons.YesNo);
             if (response == DialogResult.Yes)
@@ -517,4 +747,3 @@ namespace controller_ui
         }
     }
 }
-

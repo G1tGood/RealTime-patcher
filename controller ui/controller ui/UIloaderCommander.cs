@@ -12,8 +12,9 @@ namespace controller_ui
         public UIloaderCommander(Patcher _patcher) : base(){
             patcher = _patcher;
         }
-        public override ulong find(Byte[] what, ulong startAdress = 0)
+        public override ulong findCommand(Byte[] what, ulong startAdress = 0)
         {
+            
             throw new NotImplementedException();
         }
         protected override void writeMemory(UInt64 address, byte[] data)
